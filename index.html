@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>KVM Borewell - Quotation</title>
+
+    <!-- html2pdf -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        * {
+          box-sizing: border-box;
+          font-family: Arial, Helvetica, sans-serif;
+        }
+        body {
+          width: 900px;
+            padding: 20px;
+            margin: 20px;
+            background-color: #f0f0f0;
+            border: 2px solid #333;
+            border-radius: 8px;
+            box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            font-family: Arial, sans-serif;
+
+        }
+        .toolbar {
+          max-width: 1100px;
+          margin: 0 auto 12px;
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        .toolbar button, .toolbar select {
+          padding: 8px 12px;
+          border-radius: 6px;
+          border: 1px solid #bbb;
+          background: #fff;
+          cursor: pointer;
+        }
+        .toolbar button.primary {
+          background: #0275d8;
+          color: #fff;
+          border-color: #0275d8;
+        }
+        .container {
+          max-width: 1100px;
+          margin: 0 auto;
+          background: #fff;
+          padding: 22px;
+          box-shadow: 0 4px 18px rgba(0,0,0,.12);
+          position: relative;
+        }
+        /* watermark */
+        #watermark {
+          position: absolute;
+          left: 50%;
+          top: 46%;
+          transform: translate(-50%,-50%);
+          opacity: 0.52;
+          max-width: 700px;
+          pointer-events: none;
+          z-index: 0;
+        }
+        .company-header img {
+          width: 100%;
+          height: 180px;
+          object-fit:fill;
+        }
+        .row {
+          display: flex;
+          gap: 12px;
+          margin-top: 10px;
+        }
+        .col {
+          flex: 1;
+        }
+        .small {
+          flex: 0 0 150px;
+        }
+        label {
+          font-size: 13px;
+          color: #333;
+          display: block;
+          margin-bottom: 4px;
+        }
+        input[type="text"], input[type="date"], input[type="number"], select {
+          width: 100%;
+          padding: 8px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          font-size: 14px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 14px;
+          position: relative;
+          z-index: 2;
+          background: transparent;
+        }
+        th, td {
+          border: 1px solid #222;
+          padding: 8px;
+          font-size: 14px;
+          text-align: left;
+        }
+        th {
+          background: #f3f3f3;
+        }
+        input.cell {
+          width: 100%;
+          padding: 6px;
+          border: 1px solid #bbb;
+          border-radius: 4px;
+        }
+        .totals {
+          margin-top: 10px;
+          display: flex;
+          justify-content: flex-end;
+          gap: 14px;
+          align-items: center;
+        }
+        .totals .box {
+          min-width: 220px;
+          padding: 8px;
+          border: 1px solid #ddd;
+          background: #fafafa;
+          border-radius: 6px;
+          text-align: right;
+        }
+        .footer {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 22px;
+          align-items: flex-end;
+        }
+        .terms {
+          margin-top: 18px;
+          border: 1px solid #ddd;
+          padding: 10px;
+          background: #fff;
+        }
+        .small-muted {
+          font-size: 12px;
+          color: #666;
+          margin-top: 6px;
+        }
+        #savedList {
+          min-width: 220px;
+        }
+        .controls {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+        .signature-preview {
+          max-width: 220px;
+          max-height: 80px;
+          object-fit: contain;
+          border: 1px dashed #ccc;
+          padding: 6px;
+          background: #fff;
+        }
+        /* print: hide UI buttons */
+        @media print {
+          .toolbar, .controls {
+            display: none !important;
+          }
+          body {
+            padding: 0;
+            background: white;
+          }
+          .container {
+            box-shadow: none;
+            margin: 0;
+            padding: 15px;
+          }
+        }
+          
+    </style>
+</head>
+<body>
+<div class="toolbar">
+    <button id="btnSave" class="primary">Save Quotation</button>
+    <button id="btnPdf">Download PDF</button>
+    <button id="btnPrint">Print</button>
+
+    <div style="display:flex;align-items:center;gap:8px;margin-left:12px">
+        <label for="savedList" style="margin-bottom:0;font-size:13px">Saved:</label>
+        <select id="savedList"><option value="">-- Select saved quotation --</option></select>
+        <button id="btnLoad">Load</button>
+        <button id="btnDelete">Delete</button>
+    </div>
+
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <label style="margin-bottom:0;font-size:13px">Signature:</label>
+        <input id="sigUpload" type="file" accept="image/*">
+    </div>
+</div>
+
+<div class="container" id="printArea">
+    <!-- watermark image -->
+    <img id="watermark" src="./photo/background.png" alt="watermark" onerror="this.style.display='none'">
+    <div class="company-header" style="z-index:3">
+        <img src="./photo/photo3.png" alt="KVM Borewell Logo" onerror="this.style.display='none'">
+      </div>
+      <div style="text-align:center; border:2px solid black; padding:15px; width:fit-content; margin:auto; background-color:lightblue;">
+    <a href="mailto:eviji.eswaran@gmail.com" 
+       style="color:rgb(27, 12, 236); text-decoration:none; font-size:20px; font-weight:bold;">
+        Gmail: eviji.eswaran@gmail.com
+    </a>
+</div>
+
+
+    <!-- header inputs -->
+    <div class="row" style="margin-top:12px;z-index:3">
+        <div class="small">
+            <label>No</label>
+            <input type="text" id="inputNo" placeholder="Quotation no">
+        </div>
+
+        <div class="small">
+            <label>Date</label>
+            <input type="date" id="inputDate">
+        </div>
+
+        <div class="col">
+            <label>M/s (Customer)</label>
+            <input type="text" id="inputMS" placeholder="Customer / Company name">
+        </div>
+
+        <div class="col">
+            <label>Contact / Address</label>
+            <input type="text" id="inputContact" placeholder="Phone or address">
+        </div>
+    </div>
+
+    <!-- calculation table -->
+    <table id="calcTable" style="z-index:3">
+        <thead>
+        <tr>
+            <th style="width:50px">S.No.</th>
+            <th>PARTICULARS</th>
+            <th style="width:110px">Qty</th>
+            <th style="width:140px">Rate (Rs.)</th>
+            <th style="width:140px">Amount (Rs.)</th>
+        </tr>
+        </thead>
+        <tbody id="tbodyRows">
+        <!-- rows will be generated by JavaScript -->
+        </tbody>
+
+        <tfoot>
+        <tr>
+            <td colspan="4" style="text-align:right"><b>Total</b></td>
+            <td><b id="totalAmount">0.00</b></td>
+        </tr>
+        <tr>
+            <td colspan="4" style="text-align:right">Advance</td>
+            <td><input id="advanceInput" type="number" min="0" step="0.01" value="0" class="cell"></td>
+        </tr>
+        <tr>
+            <td colspan="4" style="text-align:right"><b>Balance</b></td>
+            <td><b id="balanceAmount">0.00</b></td>
+        </tr>
+        </tfoot>
+    </table>
+
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:flex-start;z-index:3">
+        <div style="flex:1">
+            <label>Rupees (in words)</label>
+            <div id="amountInWords" style="padding:8px;border:1px solid #ddd;background:#fafafa;border-radius:4px;min-height:42px"></div>
+        </div>
+        <div style="width:260px;text-align:right">
+            <label>Signature Preview</label>
+            <div style="margin-top:6px">
+                <img id="sigPreview" class="signature-preview" alt="signature preview" src="" style="display:none">
+            </div>
+        </div>
+    </div>
+
+    <div class="terms" style="z-index:3">
+        
+        <table id="calcTable" style="z-index:3">
+        <thead>
+        <tr>
+            <th >குறிப்பு : ஓட்டக்கூடிய போரில் கூலாங்கற்கள் வந்தாலோ,<br>
+                அதிகப்படியானம் போல்ராஸ், மணல் வந்தாலோ,<br>
+                போர் ஓட்ட இயலாது. அதற்கு நிர்வாகம் பொறுப்பல்ல.</th>
+            <th>  For : SRI KVM BORE WELLS</th>
+           
+        </tr>
+        </thead>
+</table>
+    </div>
+ <div style="text-align:center">
+            <b>ThankYou</b><br>
+    <div class="footer" style="z-index:3">
+        <div style="text-align:left">
+            <b>Head Office:</b><br>Kolathur, Chennai
+        </div>
+        <div style="text-align:right">
+            <b>Branch Office:</b><br>Theni
+        </div>
+    </div>
+
+</div>
+
+
+<script>
+    // =========================
+    // Helper / Initialization
+    // =========================
+
+    const defaultItems = [
+      "7/5 inch Bore Well Drilling",
+      "Slowing",
+      "Bullesbag",
+      "Bendanet powder",
+      "Tronespore",
+      "Power Rig",
+      "7 inch Finolex Pipe (6kg)",
+      "5 inch Finolex Pipe (4kg)",
+      "Bore Bata"
+    ];
+
+    const tbody = document.getElementById('tbodyRows');
+    const totalAmountEl = document.getElementById('totalAmount');
+    const balanceAmountEl = document.getElementById('balanceAmount');
+    const advanceInput = document.getElementById('advanceInput');
+    const amountInWordsEl = document.getElementById('amountInWords');
+    const sigUpload = document.getElementById('sigUpload');
+    const sigPreview = document.getElementById('sigPreview');
+    const watermark = document.getElementById('watermark');
+
+    // Create initial rows
+    function createRow(index, particular = '', qty = '', rate = '', isEditableParticular = true) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${index}</td>
+        <td>${isEditableParticular ? `<input type="text" class="cell part" value="${escapeHtml(particular)}"">` : escapeHtml(particular)}</td>
+        <td><input type="number" min="0" step="0.01" class="cell qty" value="${qty}" placeholder="0"></td>
+        <td><input type="number" min="0" step="0.01" class="cell rate" value="${rate}" placeholder="0.00"></td>
+        <td class="amount">0.00</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    // Escape HTML for safety
+    function escapeHtml(unsafe) {
+      if (!unsafe && unsafe !== 0) return '';
+      return String(unsafe).replace(/[&<>"'`=\/]/g, function(s) {
+        return ({
+          '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'
+        })[s];
+      });
+    }
+
+    // Initialize rows
+    function initRows() {
+      tbody.innerHTML = '';
+      let idx = 1;
+      defaultItems.forEach(item => createRow(idx++, item, '', ''));
+      // Two editable blank rows for custom entries
+      createRow(idx++, '', '', '', true);
+      createRow(idx++, '', '', '', true);
+      updateCalculations();
+    }
+
+    // =========================
+    // Calculation & Words
+    // =========================
+
+    function updateCalculations() {
+      let total = 0;
+      const rows = tbody.querySelectorAll('tr');
+      rows.forEach(row => {
+        const qtyEl = row.querySelector('.qty');
+        const rateEl = row.querySelector('.rate');
+        const amtCell = row.querySelector('.amount');
+        if (qtyEl && rateEl && amtCell) {
+          const q = parseFloat(qtyEl.value) || 0;
+          const r = parseFloat(rateEl.value) || 0;
+          const amt = q * r;
+          amtCell.textContent = amt ? amt.toFixed(2) : '0.00';
+          total += amt;
+        }
+      });
+      totalAmountEl.textContent = total.toFixed(2);
+      calculateBalance();
+    }
+
+    function calculateBalance() {
+      const total = parseFloat(totalAmountEl.textContent) || 0;
+      const adv = parseFloat(advanceInput.value) || 0;
+      const bal = Math.max(0, total - adv);
+      balanceAmountEl.textContent = bal.toFixed(2);
+      amountInWordsEl.textContent = numberToWords(Math.round(total));
+    }
+
+    // Number to Indian English words
+    function numberToWords(num) {
+      if (num === 0) return "Zero Rupees Only";
+      const a = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+                 "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen",
+                 "Eighteen", "Nineteen"];
+      const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+      function two(n) {
+        return n < 20 ? a[n] : b[Math.floor(n/10)] + (n%10 ? " " + a[n%10] : "");
+      }
+
+      function three(n) {
+        let out = '';
+        if (n > 99) out += a[Math.floor(n/100)] + " Hundred ";
+        if (n % 100) out += two(n%100);
+        return out.trim();
+      }
+
+      let crore = Math.floor(num / 10000000);
+      let lakh = Math.floor((num % 10000000) / 100000);
+      let thousand = Math.floor((num % 100000) / 1000);
+      let hundred = Math.floor((num % 1000));
+
+      let parts = [];
+      if (crore) parts.push(three(crore) + " Crore");
+      if (lakh) parts.push(three(lakh) + " Lakh");
+      if (thousand) parts.push(three(thousand) + " Thousand");
+      if (hundred) parts.push(three(hundred));
+
+      return parts.join(' ') + " Rupees Only";
+    }
+
+    // =========================
+    // Local Storage Management
+    // =========================
+
+    const STORAGE_KEY = 'kvm_quotes_v2';
+
+    function loadSavedList() {
+      const select = document.getElementById('savedList');
+      select.innerHTML = '<option value="">-- Select saved quotation --</option>';
+      try {
+        const arr = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        arr.forEach((q, i) => {
+          const opt = document.createElement('option');
+          opt.value = i;
+          const date = q.date ? new Date(q.date).toLocaleDateString() : 'No Date';
+          opt.textContent = `${q.no || 'No'} — ${q.ms || 'No Customer'} — ${date} — ₹${q.total || '0.00'}`;
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        console.error('Error loading saved list:', e);
+      }
+    }
+
+    function validateForm() {
+      const customer = document.getElementById('inputMS').value.trim();
+      if (!customer) {
+        alert('Please enter customer name');
+        return false;
+      }
+      return true;
+    }
+
+    function saveCurrentQuotation() {
+      if (!validateForm()) return;
+
+      try {
+        const arr = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        const data = collectFormData();
+        arr.push(data);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+        alert('Quotation saved successfully!');
+        loadSavedList();
+      } catch (e) {
+        alert('Error saving quotation: ' + e.message);
+      }
+    }
+
+    function collectFormData() {
+      const rows = [];
+      tbody.querySelectorAll('tr').forEach(tr => {
+        const partEl = tr.querySelector('.part');
+        const part = partEl ? partEl.value.trim() : tr.cells[1].innerText.trim();
+        const qty = (tr.querySelector('.qty')?.value) || "";
+        const rate = (tr.querySelector('.rate')?.value) || "";
+        const amount = (tr.querySelector('.amount')?.textContent) || "0.00";
+        if (part || qty || rate) {
+          rows.push({part, qty, rate, amount});
+        }
+      });
+
+      return {
+        no: document.getElementById('inputNo').value,
+        date: document.getElementById('inputDate').value,
+        ms: document.getElementById('inputMS').value,
+        contact: document.getElementById('inputContact').value,
+        rows,
+        total: document.getElementById('totalAmount').textContent,
+        advance: document.getElementById('advanceInput').value,
+        balance: document.getElementById('balanceAmount').textContent,
+        signatureDataUrl: sigPreview.src || '',
+        savedAt: new Date().toISOString()
+      };
+    }
+
+    function loadQuotationByIndex(idx) {
+      try {
+        const arr = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        if (!arr[idx]) {
+          alert('Quotation not found');
+          return;
+        }
+        const q = arr[idx];
+
+        // Fill basic fields
+        document.getElementById('inputNo').value = q.no || '';
+        document.getElementById('inputDate').value = q.date || '';
+        document.getElementById('inputMS').value = q.ms || '';
+        document.getElementById('inputContact').value = q.contact || '';
+
+        // Rebuild rows
+        tbody.innerHTML = '';
+        if (q.rows && q.rows.length > 0) {
+          q.rows.forEach((r, i) => createRow(i+1, r.part, r.qty, r.rate, true));
+        } else {
+          initRows();
+        }
+
+        updateCalculations();
+        advanceInput.value = q.advance || 0;
+        calculateBalance();
+
+        // Load signature
+        if (q.signatureDataUrl) {
+          sigPreview.src = q.signatureDataUrl;
+          sigPreview.style.display = '';
+        } else {
+          sigPreview.style.display = 'none';
+        }
+
+        alert('Quotation loaded successfully!');
+      } catch (e) {
+        alert('Error loading quotation: ' + e.message);
+      }
+    }
+
+    function deleteSelected() {
+      const sel = document.getElementById('savedList');
+      const idx = sel.value;
+      if (idx === "") {
+        alert('Please select a quotation to delete');
+        return;
+      }
+      if (!confirm('Are you sure you want to delete this quotation?')) return;
+
+      try {
+        const arr = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        arr.splice(idx, 1);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+        loadSavedList();
+        alert('Quotation deleted successfully!');
+      } catch (e) {
+        alert('Error deleting quotation: ' + e.message);
+      }
+    }
+
+    // =========================
+    // Signature Handling
+    // =========================
+
+    sigUpload.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Please select an image smaller than 2MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = evt => {
+        sigPreview.src = evt.target.result;
+        sigPreview.style.display = '';
+      };
+      reader.onerror = () => {
+        alert('Error reading image file');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // =========================
+    // PDF & Print Functions
+    // =========================
+
+    function downloadPdf() {
+      if (!validateForm()) return;
+
+      try {
+        const element = document.getElementById('printArea');
+        const quotationNo = document.getElementById('inputNo').value || 'quotation';
+        const customerName = document.getElementById('inputMS').value || 'customer';
+
+        const opt = {
+          margin: [10, 10, 10, 10],
+          filename: `KVM_Quotation_${quotationNo}_${customerName}.pdf`.replace(/[^a-z0-9]/gi, '_'),
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          },
+          jsPDF: {
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait'
+          }
+        };
+
+        // Show loading message
+        const originalText = document.getElementById('btnPdf').textContent;
+        document.getElementById('btnPdf').textContent = 'Generating PDF...';
+        document.getElementById('btnPdf').disabled = true;
+
+        html2pdf().set(opt).from(element).save().finally(() => {
+          document.getElementById('btnPdf').textContent = originalText;
+          document.getElementById('btnPdf').disabled = false;
+        });
+
+      } catch (e) {
+        alert('Error generating PDF: ' + e.message);
+      }
+    }
+
+    // =========================
+    // Event Listeners
+    // =========================
+
+    document.getElementById('btnSave').addEventListener('click', saveCurrentQuotation);
+    document.getElementById('btnPdf').addEventListener('click', downloadPdf);
+    document.getElementById('btnPrint').addEventListener('click', () => {
+      if (validateForm()) {
+        window.print();
+      }
+    });
+
+    document.getElementById('btnLoad').addEventListener('click', () => {
+      const sel = document.getElementById('savedList');
+      if (sel.value === "") {
+        alert('Please select a quotation to load');
+        return;
+      }
+      loadQuotationByIndex(Number(sel.value));
+    });
+
+    document.getElementById('btnDelete').addEventListener('click', deleteSelected);
+
+    // Input event listeners for calculations
+    document.addEventListener('input', function(e) {
+      if (e.target.classList.contains('qty') || e.target.classList.contains('rate')) {
+        updateCalculations();
+      }
+      if (e.target.id === 'advanceInput') {
+        calculateBalance();
+      }
+    });
+
+    // Auto-add new row when last row has data
+    tbody.addEventListener('input', function(e) {
+      if (e.target.classList.contains('part') || e.target.classList.contains('qty') || e.target.classList.contains('rate')) {
+        const rows = tbody.querySelectorAll('tr');
+        if (rows.length > 0) {
+          const lastRow = rows[rows.length - 1];
+          const hasData = lastRow.querySelector('.part')?.value.trim() ||
+                         lastRow.querySelector('.qty')?.value ||
+                         lastRow.querySelector('.rate')?.value;
+          if (hasData) {
+            // Check if we already added a new row
+            const allRows = tbody.querySelectorAll('tr');
+            const lastRowIndex = Array.from(allRows).indexOf(lastRow);
+            if (lastRowIndex === allRows.length - 1) {
+              createRow(allRows.length + 1, '', '', '', true);
+            }
+          }
+        }
+      }
+    });
+
+    // Keyboard shortcut: Ctrl+S to save
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        saveCurrentQuotation();
+      }
+    });
+
+    // =========================
+    // Initialize Application
+    // =========================
+
+    // Set default date
+    function setDefaultDate() {
+      const dateInput = document.getElementById('inputDate');
+      if (!dateInput.value) {
+        const today = new Date();
+        const isoString = today.toISOString().split('T')[0];
+        dateInput.value = isoString;
+      }
+    }
+
+    // Initialize the application
+    function initApp() {
+      initRows();
+      loadSavedList();
+      setDefaultDate();
+      updateCalculations();
+    }
+
+    // Start the app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
